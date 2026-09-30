@@ -149,8 +149,20 @@ impl Prediction {
         }
     }
 
-    /// The prediction for content whose type is decided without the model.
-    pub(crate) fn ruled(output: ContentType) -> Self {
+    /// A prediction decided without the model, e.g. for empty content or a
+    /// directory: `dl` is [`ContentType::Undefined`], the score is 1 and nothing
+    /// is overwritten.
+    ///
+    /// ```
+    /// use magika_burn::{ContentType, OverwriteReason, Prediction};
+    ///
+    /// let prediction = Prediction::ruled(ContentType::Directory);
+    /// assert_eq!(prediction.dl, ContentType::Undefined);
+    /// assert_eq!(prediction.output, ContentType::Directory);
+    /// assert_eq!(prediction.score, 1.0);
+    /// assert_eq!(prediction.overwrite_reason, OverwriteReason::None);
+    /// ```
+    pub fn ruled(output: ContentType) -> Self {
         Self {
             dl: ContentType::Undefined,
             output,
