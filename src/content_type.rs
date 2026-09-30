@@ -24,6 +24,15 @@ pub struct ContentTypeInfo {
 }
 
 impl ContentType {
+    /// Returns the content type with the given label, e.g. `"python"`.
+    pub fn from_label(label: &str) -> Option<Self> {
+        // `ALL` is sorted by label.
+        let index = Self::ALL
+            .binary_search_by(|content_type| content_type.label().cmp(label))
+            .ok()?;
+        Some(Self::ALL[index])
+    }
+
     /// Returns the unique label, e.g. `"python"`.
     pub fn label(self) -> &'static str {
         self.info().label

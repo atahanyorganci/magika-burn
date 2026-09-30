@@ -145,7 +145,6 @@ fn content_types(knowledge_base: &BTreeMap<String, KnowledgeBaseEntry>) -> Strin
     let mut names = std::collections::BTreeSet::new();
     let mut variants = String::new();
     let mut all = String::new();
-    let mut from_label = String::new();
     let mut infos = String::new();
     for (label, entry) in knowledge_base {
         let variant = variant(label);
@@ -162,11 +161,6 @@ fn content_types(knowledge_base: &BTreeMap<String, KnowledgeBaseEntry>) -> Strin
         let doc = format!("{description} (`{label}`, `{mime_type}`).");
         writeln!(variants, "    #[doc = {doc:?}]\n    {variant},").unwrap();
         writeln!(all, "        ContentType::{variant},").unwrap();
-        writeln!(
-            from_label,
-            "            {label:?} => Some(ContentType::{variant}),"
-        )
-        .unwrap();
         writeln!(
             infos,
             "    ContentTypeInfo {{ label: {label:?}, mime_type: {mime_type:?}, group: {group:?}, \
@@ -195,13 +189,6 @@ impl ContentType {{
     /// All content types, sorted by label.
     pub const ALL: &'static [ContentType] = &[
 {all}    ];
-
-    /// Returns the content type with the given label, e.g. `"python"`.
-    pub fn from_label(label: &str) -> Option<Self> {{
-        match label {{
-{from_label}            _ => None,
-        }}
-    }}
 }}
 
 /// Information about each content type, indexed by `ContentType as usize`.
