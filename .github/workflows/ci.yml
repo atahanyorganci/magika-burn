@@ -58,3 +58,6 @@ jobs:
 
       - name: Test the npm package
         run: nix develop --command pnpm test
+
+      - name: Test a compiled Bun executable
+        run: nix develop --command tests/bun/compile.sh

@@ -30,21 +30,26 @@
   "exports": {
     ".": {
       "node": {
-        "types": "./pkg/nodejs/magika.d.ts",
-        "default": "./pkg/nodejs/magika.js"
+        "types": "./node.d.ts",
+        "default": "./node.js"
       },
       "default": {
         "types": "./pkg/web/magika.d.ts",
         "default": "./pkg/web/magika.js"
       }
     },
+    "./web": {
+      "types": "./pkg/web/magika.d.ts",
+      "default": "./pkg/web/magika.js"
+    },
     "./magika_bg.wasm": "./pkg/web/magika_bg.wasm",
     "./package.json": "./package.json"
   },
-  "main": "./pkg/nodejs/magika.js",
-  "types": "./pkg/nodejs/magika.d.ts",
+  "main": "./node.js",
+  "types": "./node.d.ts",
   "files": [
-    "pkg/nodejs/",
+    "node.js",
+    "node.d.ts",
     "pkg/web/",
     "assets/LICENSE"
   ],
@@ -52,7 +57,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "scripts/build-wasm.sh web nodejs",
+    "build": "scripts/build-wasm.sh",
     "test": "node --test 'tests/wasm/*.test.mjs'",
     "prepack": "pnpm run build"
   },

@@ -214,7 +214,7 @@ weights.
 
 ```sh
 cargo test --workspace --all-features  # Rust and CLI tests, including upstream reference data
-pnpm run build                         # build pkg/web and pkg/nodejs
+pnpm run build                         # build pkg/web
 pnpm test                              # test the WebAssembly build with Node.js
 uv run scripts/prepare_model.py        # re-vendor upstream assets and regenerate fixtures
 ```
