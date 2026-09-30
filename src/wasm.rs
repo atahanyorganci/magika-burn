@@ -6,7 +6,7 @@
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use crate::{ContentType, ContentTypeInfo, Magika, Prediction, PredictionMode};
+use crate::{ContentType, ContentTypeInfo, Features, Magika, Prediction, PredictionMode};
 
 #[wasm_bindgen(typescript_custom_section)]
 const TYPES: &str = r#"
@@ -157,9 +157,19 @@ impl MagikaModel {
     }
 
     /// Identifies the content type of `content`.
+    ///
+    /// Only the first and last 4 KiB are copied into WebAssembly memory, so large
+    /// inputs cost no more memory than small ones.
     #[wasm_bindgen(js_name = identifyBytes, unchecked_return_type = "Prediction")]
-    pub fn identify_bytes(&self, content: &[u8]) -> JsValue {
-        to_js(&JsPrediction::from(self.0.identify_bytes(content)))
+    pub fn identify_bytes(&self, content: &js_sys::Uint8Array) -> JsValue {
+        let features = Features::extract_at(content.length().into(), |buf, offset| {
+            let start = u32::try_from(offset).expect("offsets are within the array");
+            let end = start + u32::try_from(buf.len()).expect("blocks are 4 KiB");
+            content.subarray(start, end).copy_to(buf);
+            Ok(())
+        })
+        .expect("reading from a Uint8Array cannot fail");
+        to_js(&JsPrediction::from(self.0.identify(features)))
     }
 
     /// Scores a batch of samples (low-level).

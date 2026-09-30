@@ -61,6 +61,19 @@ impl Features {
         })
     }
 
+    /// Extracts the features of content of length `len`, reading at most its first
+    /// and last 4 KiB with `read_at(buffer, offset)`.
+    #[cfg_attr(
+        not(all(target_arch = "wasm32", target_os = "unknown")),
+        expect(dead_code, reason = "used by the WebAssembly bindings")
+    )]
+    pub(crate) fn extract_at(
+        len: u64,
+        read_at: impl FnMut(&mut [u8], u64) -> io::Result<()>,
+    ) -> io::Result<Self> {
+        Self::extract_with(&SIZES, len, read_at)
+    }
+
     fn extract_with(
         sizes: &Sizes,
         len: u64,

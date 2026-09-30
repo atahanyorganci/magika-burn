@@ -6,6 +6,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { gunzipSync } from "node:zlib";
 import { MagikaModel } from "@yorganci/magika-burn";
 
@@ -91,4 +93,26 @@ test("prediction mode option", () => {
   assert.throws(() => new MagikaModel({ predictionMode: 1 }), /invalid predictionMode: expected/);
   assert.equal(new MagikaModel({ predictionMode: undefined }).predictionMode, "high_confidence");
   assert.equal(new MagikaModel(null).predictionMode, "high_confidence");
+});
+
+test("identifies large inputs from their ends", () => {
+  setFlagsFromString("--expose-gc");
+  const gc = runInNewContext("gc");
+  const rss = () => (gc(), process.memoryUsage().rss / 1048576);
+  const model = new MagikaModel();
+
+  // 64 MiB of varied bytes: only the first and the last 4 KiB matter.
+  const content = new Uint8Array(64 * 1048576);
+  let state = 1;
+  for (let i = 0; i < content.length; i += 4096) {
+    state = (state * 1103515245 + 12345) >>> 0;
+    content.fill(state & 0xff, i, i + 4096);
+  }
+  const ends = new Uint8Array([...content.subarray(0, 4096), ...content.subarray(-4096)]);
+  const expected = model.identifyBytes(ends);
+
+  const before = rss();
+  assert.deepEqual(model.identifyBytes(content), expected);
+  const growth = rss() - before;
+  assert.ok(growth < 16, `identifying 64 MiB added ${growth.toFixed(1)} MiB of memory`);
 });

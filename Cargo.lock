@@ -281,6 +281,7 @@ version = "0.0.1"
 dependencies = [
  "base64",
  "flate2",
+ "js-sys",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",

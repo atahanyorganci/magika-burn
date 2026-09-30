@@ -103,7 +103,7 @@ impl Magika {
         Ok(self.identify(Features::extract_reader(reader)?))
     }
 
-    fn identify(&self, features: Features) -> Prediction {
+    pub(crate) fn identify(&self, features: Features) -> Prediction {
         match features {
             Features::Ruled(output) => Prediction::ruled(output),
             Features::Tokens(tokens) => {

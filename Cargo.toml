@@ -56,6 +56,8 @@ wasm-bindgen = "=0.2.127"
 # Plain JavaScript objects for predictions and content type information.
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
+# Reads the ends of a Uint8Array without copying all of it into WebAssembly memory.
+js-sys = "0.3"
 
 [build-dependencies]
 serde = { version = "1", features = ["derive"] }
