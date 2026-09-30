@@ -8,9 +8,10 @@ exit code: 2
 Detect the content type of files with Google's Magika model
 
 Usage: magika [OPTIONS] <PATH>...
+       magika --list-content-types [--json]
 
 Arguments:
-  <PATH>...  Files or directories to identify. `-` reads standard input
+  [PATH]...  Files or directories to identify. `-` reads standard input
 
 Options:
   -r, --recursive               Identify the files inside directories instead of the directories themselves
@@ -20,5 +21,6 @@ Options:
   -i, --mime-type               Print the MIME type (e.g. `application/x-rust`) instead of the description
   -s, --output-score            Append the score of the prediction
       --json                    Print a JSON array with the prediction and content type of each path
+      --list-content-types      List all content types and exit. Combine with --json for JSON
   -h, --help                    Print help (see more with '--help')
   -V, --version                 Print version

@@ -8,6 +8,7 @@ exit code: 2
 error: standard input (`-`) can only be read once
 
 Usage: magika [OPTIONS] <PATH>...
+       magika --list-content-types [--json]
 
 For more information, try '--help'.
 exit code: 2
@@ -15,7 +16,8 @@ exit code: 2
 --- stderr
 error: the argument '--label' cannot be used with '--mime-type'
 
-Usage: magika --label <PATH>...
+Usage: magika [OPTIONS] <PATH>...
+       magika --list-content-types [--json]
 
 For more information, try '--help'.
 exit code: 2
@@ -30,6 +32,25 @@ exit code: 2
 --- stderr
 error: the argument '--json' cannot be used with '--output-score'
 
-Usage: magika --json <PATH>...
+Usage: magika [OPTIONS] <PATH>...
+       magika --list-content-types [--json]
+
+For more information, try '--help'.
+exit code: 2
+--- stdout
+--- stderr
+error: the argument '--list-content-types' cannot be used with '[PATH]...'
+
+Usage: magika [OPTIONS] <PATH>...
+       magika --list-content-types [--json]
+
+For more information, try '--help'.
+exit code: 2
+--- stdout
+--- stderr
+error: the argument '--list-content-types' cannot be used with '--label'
+
+Usage: magika [OPTIONS] <PATH>...
+       magika --list-content-types [--json]
 
 For more information, try '--help'.

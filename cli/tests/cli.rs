@@ -251,6 +251,58 @@ fn prints_an_empty_json_array_without_entries() {
 }
 
 #[test]
+fn lists_content_types() {
+    let dir = fixtures();
+    let output = Command::new(env!("CARGO_BIN_EXE_magika"))
+        .arg("--list-content-types")
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines.len(), 1 + magika_burn::ContentType::ALL.len());
+    // The header, the first rows and a few well-known content types.
+    let selected: Vec<&str> = lines[..4]
+        .iter()
+        .chain(lines.iter().filter(|line| {
+            ["python ", "rust ", "unknown "]
+                .iter()
+                .any(|label| line.starts_with(label))
+        }))
+        .copied()
+        .collect();
+    insta::assert_snapshot!(selected.join("\n"));
+}
+
+#[test]
+fn lists_content_types_as_json() {
+    let dir = fixtures();
+    let output = Command::new(env!("CARGO_BIN_EXE_magika"))
+        .args(["--list-content-types", "--json"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    let json: Vec<serde_json::Value> = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(json.len(), magika_burn::ContentType::ALL.len());
+    let python = json.iter().find(|info| info["label"] == "python").unwrap();
+    assert_eq!(
+        *python,
+        serde_json::json!({
+            "label": "python",
+            "mime_type": "text/x-python",
+            "group": "code",
+            "description": "Python source",
+            "extensions": ["py", "pyi"],
+            "is_text": true,
+        })
+    );
+}
+
+#[test]
 fn rejects_invalid_usage() {
     let dir = fixtures();
     let mut output = String::new();
@@ -259,6 +311,8 @@ fn rejects_invalid_usage() {
         &["-l", "-i", "main.rs"],
         &["-m", "sure", "main.rs"],
         &["--json", "-s", "main.rs"],
+        &["--list-content-types", "main.rs"],
+        &["--list-content-types", "--label"],
     ] {
         output += &magika(dir.path(), args, b"");
     }

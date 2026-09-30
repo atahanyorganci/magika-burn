@@ -1,0 +1,11 @@
+---
+source: cli/tests/cli.rs
+expression: "selected.join(\"\\n\")"
+---
+LABEL             MIME TYPE                                                                  GROUP        EXTENSIONS               DESCRIPTION
+3ds               application/octet-stream                                                   unknown      3ds                      Nintendo 3DS roms
+3dsm              application/x-3ds                                                          image        3ds                      3D studio Max
+3dsx              application/octet-stream                                                   unknown      3dsx                     Nintendo 3DS homebrew
+python            text/x-python                                                              code         py,pyi                   Python source
+rust              application/x-rust                                                         code         rs                       Rust source
+unknown           application/octet-stream                                                   unknown                               Unknown binary data

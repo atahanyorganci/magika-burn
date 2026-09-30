@@ -18,10 +18,15 @@ use walkdir::WalkDir;
 
 /// Detect the content type of files with Google's Magika model.
 #[derive(Parser)]
-#[command(name = "magika", version, arg_required_else_help = true)]
+#[command(
+    name = "magika",
+    version,
+    arg_required_else_help = true,
+    override_usage = "magika [OPTIONS] <PATH>...\n       magika --list-content-types [--json]"
+)]
 struct Args {
     /// Files or directories to identify. `-` reads standard input.
-    #[arg(required = true, value_name = "PATH")]
+    #[arg(required_unless_present = "list_content_types", value_name = "PATH")]
     paths: Vec<PathBuf>,
 
     /// Identify the files inside directories instead of the directories themselves.
@@ -51,6 +56,16 @@ struct Args {
     /// Print a JSON array with the prediction and content type of each path.
     #[arg(long, conflicts_with_all = ["label", "mime_type", "output_score"])]
     json: bool,
+
+    /// List all content types and exit. Combine with --json for JSON.
+    #[arg(
+        long,
+        conflicts_with_all = [
+            "paths", "recursive", "no_dereference", "prediction_mode",
+            "label", "mime_type", "output_score",
+        ],
+    )]
+    list_content_types: bool,
 }
 
 /// Command-line names of [`PredictionMode`].
@@ -91,7 +106,12 @@ fn main() -> ExitCode {
             .exit();
     }
 
-    match run(&args) {
+    let result = if args.list_content_types {
+        list_content_types(args.json).map(|()| true)
+    } else {
+        run(&args)
+    };
+    match result {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
         // The reader went away, e.g. `magika … | head`.
@@ -204,6 +224,47 @@ impl<'a> From<&'a Entry> for JsonEntry<'a> {
             },
         }
     }
+}
+
+/// Prints every content type, as an aligned table or as a JSON array.
+fn list_content_types(json: bool) -> Result<()> {
+    let infos: Vec<&ContentTypeInfo> = ContentType::ALL.iter().map(|ct| ct.info()).collect();
+    let mut stdout = io::stdout().lock();
+    if json {
+        let json = serde_json::to_string_pretty(&infos).expect("content types serialize to JSON");
+        writeln!(stdout, "{json}")?;
+        return Ok(());
+    }
+
+    let header = ["LABEL", "MIME TYPE", "GROUP", "EXTENSIONS", "DESCRIPTION"];
+    let rows: Vec<[Cow<'_, str>; 5]> = infos
+        .iter()
+        .map(|info| {
+            [
+                info.label.into(),
+                info.mime_type.into(),
+                info.group.into(),
+                info.extensions.join(",").into(),
+                info.description.into(),
+            ]
+        })
+        .collect();
+    let mut widths = header.map(str::len);
+    for row in &rows {
+        for (width, cell) in widths.iter_mut().zip(row) {
+            *width = (*width).max(cell.len());
+        }
+    }
+    let header = header.map(Cow::from);
+    for row in std::iter::once(&header).chain(&rows) {
+        let [label, mime_type, group, extensions, description] = row;
+        writeln!(
+            stdout,
+            "{label:<0$}  {mime_type:<1$}  {group:<2$}  {extensions:<3$}  {description}",
+            widths[0], widths[1], widths[2], widths[3],
+        )?;
+    }
+    Ok(())
 }
 
 fn is_stdin(path: &Path) -> bool {
