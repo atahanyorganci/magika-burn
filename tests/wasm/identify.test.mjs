@@ -84,5 +84,11 @@ test("prediction mode option", () => {
     new MagikaModel({ predictionMode: "best_guess" }).predictionMode,
     "best_guess",
   );
-  assert.throws(() => new MagikaModel({ predictionMode: "nope" }), /unknown variant/);
+  assert.throws(
+    () => new MagikaModel({ predictionMode: "nope" }),
+    /invalid predictionMode "nope": expected "high_confidence", "medium_confidence" or "best_guess"/,
+  );
+  assert.throws(() => new MagikaModel({ predictionMode: 1 }), /invalid predictionMode: expected/);
+  assert.equal(new MagikaModel({ predictionMode: undefined }).predictionMode, "high_confidence");
+  assert.equal(new MagikaModel(null).predictionMode, "high_confidence");
 });

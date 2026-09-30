@@ -3,7 +3,7 @@
 //! Predictions and content type information are returned as plain JavaScript
 //! objects with camelCase fields; their TypeScript types are declared below.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 use crate::{ContentType, ContentTypeInfo, Magika, Prediction, PredictionMode};
@@ -55,6 +55,9 @@ extern "C" {
     /// `MagikaOptions` from the TypeScript declarations above.
     #[wasm_bindgen(typescript_type = "MagikaOptions")]
     pub type MagikaOptions;
+
+    #[wasm_bindgen(method, getter = predictionMode)]
+    fn prediction_mode(this: &MagikaOptions) -> JsValue;
 }
 
 #[derive(Serialize)]
@@ -101,28 +104,31 @@ impl From<Prediction> for JsPrediction {
     }
 }
 
-#[derive(Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-struct JsOptions {
-    prediction_mode: Option<JsPredictionMode>,
-}
+const PREDICTION_MODES: [PredictionMode; 3] = [
+    PredictionMode::HighConfidence,
+    PredictionMode::MediumConfidence,
+    PredictionMode::BestGuess,
+];
 
-#[derive(Deserialize)]
-#[serde(rename_all = "snake_case")]
-enum JsPredictionMode {
-    HighConfidence,
-    MediumConfidence,
-    BestGuess,
-}
-
-impl From<JsPredictionMode> for PredictionMode {
-    fn from(mode: JsPredictionMode) -> Self {
-        match mode {
-            JsPredictionMode::HighConfidence => Self::HighConfidence,
-            JsPredictionMode::MediumConfidence => Self::MediumConfidence,
-            JsPredictionMode::BestGuess => Self::BestGuess,
-        }
+/// Reads `options.predictionMode`, which defaults to `"high_confidence"`. Read by
+/// hand rather than with serde, whose deserializer adds 12 KiB of code.
+fn prediction_mode(options: Option<&MagikaOptions>) -> Result<PredictionMode, JsError> {
+    let Some(value) = options.map(MagikaOptions::prediction_mode) else {
+        return Ok(PredictionMode::default());
+    };
+    if value.is_undefined() {
+        return Ok(PredictionMode::default());
     }
+    let name = value.as_string();
+    PREDICTION_MODES
+        .into_iter()
+        .find(|mode| name.as_deref() == Some(mode.as_str()))
+        .ok_or_else(|| {
+            let got = name.map(|name| format!(" \"{name}\"")).unwrap_or_default();
+            JsError::new(&format!(
+                "invalid predictionMode{got}: expected \"high_confidence\", \"medium_confidence\" or \"best_guess\""
+            ))
+        })
 }
 
 fn to_js(value: &impl Serialize) -> JsValue {
@@ -140,11 +146,7 @@ impl MagikaModel {
     /// Throws if `options` is invalid.
     #[wasm_bindgen(constructor)]
     pub fn new(options: Option<MagikaOptions>) -> Result<MagikaModel, JsError> {
-        let options: JsOptions = match options {
-            Some(options) => serde_wasm_bindgen::from_value(options.into())?,
-            None => JsOptions::default(),
-        };
-        let mode = options.prediction_mode.map(Into::into).unwrap_or_default();
+        let mode = prediction_mode(options.as_ref())?;
         Ok(Self(Magika::new().with_prediction_mode(mode)))
     }
 
