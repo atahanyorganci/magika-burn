@@ -149,6 +149,16 @@ impl Prediction {
         }
     }
 
+    /// The prediction for content whose type is decided without the model.
+    pub(crate) fn ruled(output: ContentType) -> Self {
+        Self {
+            dl: ContentType::Undefined,
+            output,
+            score: 1.0,
+            overwrite_reason: OverwriteReason::None,
+        }
+    }
+
     /// Shorthand for `self.output.info()`.
     pub fn info(&self) -> &'static ContentTypeInfo {
         self.output.info()

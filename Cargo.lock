@@ -3340,10 +3340,12 @@ checksum = "fc04a4c58212d57930a24bf47d3fa87485264a3a054e9c10e042eb373573ad3c"
 name = "magika-burn"
 version = "0.0.0"
 dependencies = [
+ "base64 0.22.1",
  "burn",
  "burn-flex",
  "burn-onnx",
  "burn-store",
+ "flate2",
  "getrandom 0.4.3",
  "serde",
  "serde_json",

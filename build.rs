@@ -225,6 +225,8 @@ fn model_config(config: &ModelConfig) -> String {
     let num_labels = config.target_labels_space.len();
     let padding_token = config.padding_token;
     let medium_confidence_threshold = config.medium_confidence_threshold;
+    let block_size = config.block_size;
+    let min_file_size_for_dl = config.min_file_size_for_dl;
 
     let mut labels = String::new();
     let mut thresholds = String::new();
@@ -249,6 +251,15 @@ pub const INPUT_SIZE: usize = {input_size};
 pub const PADDING_TOKEN: i32 = {padding_token};
 /// Number of scores (one per model label) the model returns per sample.
 pub const NUM_LABELS: usize = {num_labels};
+
+/// Number of tokens taken from the beginning of the content.
+pub(crate) const BEG_SIZE: usize = {beg};
+/// Number of tokens taken from the end of the content.
+pub(crate) const END_SIZE: usize = {end};
+/// Number of bytes read from each end of the content before stripping whitespace.
+pub(crate) const BLOCK_SIZE: usize = {block_size};
+/// Minimum content size, without surrounding whitespace, for the model to be run.
+pub(crate) const MIN_FILE_SIZE_FOR_DL: usize = {min_file_size_for_dl};
 
 /// Threshold of `PredictionMode::MediumConfidence`, and the default threshold of
 /// `PredictionMode::HighConfidence`.
