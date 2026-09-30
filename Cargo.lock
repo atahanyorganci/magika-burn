@@ -3345,6 +3345,8 @@ dependencies = [
  "burn-onnx",
  "burn-store",
  "getrandom 0.4.3",
+ "serde",
+ "serde_json",
  "wasm-bindgen",
 ]
 

@@ -3,6 +3,8 @@
 //! backend. Works natively and on `wasm32-unknown-unknown`, where the `wasm`
 //! module provides JavaScript bindings.
 
+mod config;
+mod content_type;
 #[allow(clippy::all, clippy::pedantic, dead_code, unused)]
 mod model;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -15,14 +17,12 @@ use burn::{
     tensor::{Device, Int, Tensor, TensorData},
 };
 
-type Backend = Flex;
+pub use crate::{
+    config::{INPUT_SIZE, NUM_LABELS, PADDING_TOKEN},
+    content_type::{ContentType, ContentTypeInfo},
+};
 
-/// Number of tokens in one sample: the first 1024 and the last 1024 bytes of a file.
-pub const INPUT_SIZE: usize = 2048;
-/// Token used to pad samples of files shorter than [`INPUT_SIZE`] bytes.
-pub const PADDING_TOKEN: i32 = 256;
-/// Number of scores (one per content-type label) the model returns per sample.
-pub const NUM_LABELS: usize = 214;
+type Backend = Flex;
 
 /// Invalid model input.
 #[derive(Debug, Clone, PartialEq, Eq)]

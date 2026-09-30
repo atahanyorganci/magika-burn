@@ -10,6 +10,10 @@ categories = ["rust"]
 authors = ["atahanyorganci <atahanyorganci@hotmail.com>"]
 readme = "README.md"
 
+[features]
+# Serialize/Deserialize for the public types (content types as their labels).
+serde = ["dep:serde"]
+
 [lib]
 # cdylib for wasm-bindgen, rlib for Rust users and tests.
 crate-type = ["cdylib", "rlib"]
@@ -20,6 +24,7 @@ crate-type = ["cdylib", "rlib"]
 burn = { version = "0.21", default-features = false, features = ["std", "flex"] }
 burn-flex = { version = "0.21", default-features = false, features = ["std", "simd"] }
 burn-store = { version = "0.21", default-features = false, features = ["burnpack"] }
+serde = { version = "1", features = ["derive"], optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 burn-flex = { version = "0.21", default-features = false, features = ["std", "simd", "rayon"] }
@@ -32,6 +37,11 @@ wasm-bindgen = "=0.2.127"
 
 [build-dependencies]
 burn-onnx = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+serde_json = "1"
 
 [profile.release]
 codegen-units = 1
