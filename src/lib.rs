@@ -42,6 +42,11 @@ pub use crate::{
 
 type Backend = Flex;
 
+/// Runs the Rust examples in the README as doc tests.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 /// Invalid model input.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
