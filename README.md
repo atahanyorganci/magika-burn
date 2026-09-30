@@ -22,6 +22,12 @@ JavaScript:
 npm install @yorganci/magika-burn
 ```
 
+Command line (installs `magika`):
+
+```sh
+cargo install --git https://github.com/atahanyorganci/magika-burn magika-burn-cli
+```
+
 ## Usage
 
 ### Rust
@@ -103,6 +109,35 @@ Identifying a file takes tens of milliseconds, so run the model in a Web Worker
 if you identify many files. `MagikaModel` holds WebAssembly memory: call
 `magika.free()` when you are done with it, or declare it with `using`.
 
+### Command line
+
+`magika` identifies files, directories and standard input (`-`), and prints one
+line per path. When the model is not confident, the line shows its guess and
+score:
+
+```text
+$ magika README.md src/lib.rs Cargo.toml data.bin missing.txt
+README.md: Markdown document (text)
+src/lib.rs: Rust source (code)
+Cargo.toml: Tom's obvious, minimal language (text)
+data.bin: Unknown binary data (unknown) [low confidence: Web Assembly (executable), 31%]
+missing.txt: error: No such file or directory (os error 2)
+```
+
+| Option                           | Description                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| `-r`, `--recursive`              | Identify the files inside directories instead of the directories themselves |
+| `--no-dereference`               | Identify symbolic links as such instead of following them                   |
+| `-m`, `--prediction-mode <MODE>` | `high-confidence` (default), `medium-confidence` or `best-guess`            |
+| `-l`, `--label`                  | Print the label (`rust`) instead of the description                         |
+| `-i`, `--mime-type`              | Print the MIME type (`application/x-rust`) instead of the description       |
+| `-s`, `--output-score`           | Append the score                                                            |
+| `--json`                         | Print a JSON array with the prediction and content type of each path        |
+| `--list-content-types`           | List all content types, as a table or with `--json` as JSON                 |
+
+`magika` exits with 1 if a path could not be identified, and with 2 for invalid
+usage.
+
 ## Results
 
 A prediction contains two content types:
@@ -178,10 +213,10 @@ weights.
 `wasm-bindgen-cli`, Node.js and pnpm.
 
 ```sh
-cargo test --all-features        # Rust tests, including upstream reference data
-pnpm run build                   # build pkg/web and pkg/nodejs
-pnpm test                        # test the WebAssembly build with Node.js
-uv run scripts/prepare_model.py  # re-vendor upstream assets and regenerate fixtures
+cargo test --workspace --all-features  # Rust and CLI tests, including upstream reference data
+pnpm run build                         # build pkg/web and pkg/nodejs
+pnpm test                              # test the WebAssembly build with Node.js
+uv run scripts/prepare_model.py        # re-vendor upstream assets and regenerate fixtures
 ```
 
 ## License
