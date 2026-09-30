@@ -11,3 +11,18 @@ authors = ["atahanyorganci <atahanyorganci@hotmail.com>"]
 readme = "README.md"
 
 [dependencies]
+# `default-features = false` keeps training/autodiff out of the build. It also
+# disables Flex's default features, so they are selected on `burn-flex` below.
+burn = { version = "0.21", default-features = false, features = ["std", "flex"] }
+burn-flex = { version = "0.21", default-features = false, features = ["std", "simd"] }
+burn-store = { version = "0.21", default-features = false, features = ["burnpack"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+burn-flex = { version = "0.21", default-features = false, features = ["std", "simd", "rayon"] }
+
+[build-dependencies]
+burn-onnx = "0.21"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
