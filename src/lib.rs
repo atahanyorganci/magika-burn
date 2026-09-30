@@ -7,6 +7,7 @@ mod config;
 mod content_type;
 #[allow(clippy::all, clippy::pedantic, dead_code, unused)]
 mod model;
+mod prediction;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 pub mod wasm;
 
@@ -20,6 +21,7 @@ use burn::{
 pub use crate::{
     config::{INPUT_SIZE, NUM_LABELS, PADDING_TOKEN},
     content_type::{ContentType, ContentTypeInfo},
+    prediction::{OverwriteReason, Prediction, PredictionMode},
 };
 
 type Backend = Flex;
