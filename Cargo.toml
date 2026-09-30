@@ -1,0 +1,13 @@
+[package]
+name = "magika-burn"
+version = "0.0.0"
+edition = "2024"
+description = "Magika bindings for Rust"
+repository = "https://github.com/atahanyorganci/magika"
+license = "MIT"
+keywords = ["magika", "bindings", "rust"]
+categories = ["rust"]
+authors = ["atahanyorganci <atahanyorganci@hotmail.com>"]
+readme = "README.md"
+
+[dependencies]
