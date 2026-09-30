@@ -1,3 +1,7 @@
+# Rust
 /target
 result
 /pkg
+
+# Node
+node_modules/

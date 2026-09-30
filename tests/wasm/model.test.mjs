@@ -1,14 +1,11 @@
 // Checks the WebAssembly build against ONNX Runtime outputs of the upstream model.
 //
-// Usage: scripts/build-wasm.sh nodejs && node --test 'tests/wasm/*.test.mjs'
+// Usage: pnpm run build && pnpm test
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { test } from "node:test";
-
-const require = createRequire(import.meta.url);
-const { MagikaModel } = require("../../pkg/nodejs/magika.js");
+import { MagikaModel } from "@yorganci/magika-burn";
 
 const INPUT_SIZE = 2048;
 const NUM_LABELS = 214;

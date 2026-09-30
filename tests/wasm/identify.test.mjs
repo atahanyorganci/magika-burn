@@ -1,16 +1,13 @@
 // Checks content type identification in the WebAssembly build, including
 // upstream Magika's reference predictions.
 //
-// Usage: scripts/build-wasm.sh nodejs && node --test 'tests/wasm/*.test.mjs'
+// Usage: pnpm run build && pnpm test
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { test } from "node:test";
 import { gunzipSync } from "node:zlib";
-
-const require = createRequire(import.meta.url);
-const { MagikaModel } = require("../../pkg/nodejs/magika.js");
+import { MagikaModel } from "@yorganci/magika-burn";
 
 const MODES = ["high_confidence", "medium_confidence", "best_guess"];
 
