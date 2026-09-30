@@ -34,6 +34,9 @@ burn-flex = { version = "0.21", default-features = false, features = ["std", "si
 getrandom = { version = "0.4", features = ["wasm_js"] }
 # Must exactly match `wasm-bindgen-cli` from the Nix shell.
 wasm-bindgen = "=0.2.127"
+# Plain JavaScript objects for predictions and content type information.
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
 
 [build-dependencies]
 burn-onnx = "0.21"
