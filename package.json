@@ -48,6 +48,9 @@
     "pkg/web/",
     "assets/LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "scripts/build-wasm.sh web nodejs",
     "test": "node --test 'tests/wasm/*.test.mjs'",

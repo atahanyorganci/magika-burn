@@ -5,3 +5,4 @@ result
 
 # Node
 node_modules/
+/dist

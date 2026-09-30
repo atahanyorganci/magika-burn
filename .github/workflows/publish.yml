@@ -1,0 +1,65 @@
+# Stages the npm package with provenance when a version tag (e.g. v0.1.0) is
+# pushed. A maintainer then approves the staged release with 2FA, on npmjs.com
+# (Staged Packages) or with `npm stage approve <stage-id>`, to publish it.
+#
+# Authenticates with npm trusted publishing (OIDC), so no npm token is stored: on
+# npmjs.com, the package's trusted publisher must name this repository and this
+# workflow file (publish.yml). It only needs to allow `npm stage publish`.
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check that the tag matches the package versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          npm_version="$(jq -r .version package.json)"
+          crate_version="$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n 1)"
+          echo "tag: $tag, package.json: $npm_version, Cargo.toml: $crate_version"
+          if [[ "$npm_version" == "$tag" && "$crate_version" == "$tag" ]]; then
+            exit 0
+          fi
+          echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($npm_version) and Cargo.toml ($crate_version)"
+          exit 1
+
+      # No build caches: release artifacts are built from scratch.
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
+
+      - name: Build and pack
+        run: |
+          nix develop --command pnpm install --frozen-lockfile
+          nix develop --command pnpm pack --pack-destination dist
+
+      - name: Test the packed build
+        run: nix develop --command pnpm test
+
+      # The Nix dev shell has no npm CLI, which staged publishing requires
+      # (npm >= 11.15.0; Node.js 24 bundles a newer one).
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Stage for publishing
+        run: |
+          npm --version
+          npm stage publish ./dist/*.tgz --provenance
