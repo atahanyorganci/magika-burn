@@ -1,0 +1,66 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &args, b\"\")"
+---
+exit code: 1
+--- stdout
+[
+  {
+    "path": "hello.txt",
+    "prediction": {
+      "dl": "undefined",
+      "output": "txt",
+      "score": 1.0,
+      "overwrite_reason": "none"
+    },
+    "info": {
+      "label": "txt",
+      "mime_type": "text/plain",
+      "group": "text",
+      "description": "Generic text document",
+      "extensions": [
+        "txt"
+      ],
+      "is_text": true
+    }
+  },
+  {
+    "path": "empty.txt",
+    "prediction": {
+      "dl": "undefined",
+      "output": "empty",
+      "score": 1.0,
+      "overwrite_reason": "none"
+    },
+    "info": {
+      "label": "empty",
+      "mime_type": "inode/x-empty",
+      "group": "inode",
+      "description": "Empty file",
+      "extensions": [],
+      "is_text": false
+    }
+  },
+  {
+    "path": "directory",
+    "prediction": {
+      "dl": "undefined",
+      "output": "directory",
+      "score": 1.0,
+      "overwrite_reason": "none"
+    },
+    "info": {
+      "label": "directory",
+      "mime_type": "inode/directory",
+      "group": "inode",
+      "description": "A directory",
+      "extensions": [],
+      "is_text": false
+    }
+  },
+  {
+    "path": "missing.txt",
+    "error": "No such file or directory (os error 2)"
+  }
+]
+--- stderr

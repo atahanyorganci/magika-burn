@@ -211,6 +211,46 @@ fn identifies_symbolic_links_without_dereferencing() {
 }
 
 #[test]
+fn prints_json() {
+    let dir = fixtures();
+    // Exact output for content decided without the model (score 1).
+    let args = [
+        "--json",
+        "hello.txt",
+        "empty.txt",
+        "directory",
+        "missing.txt",
+    ];
+    insta::assert_snapshot!(magika(dir.path(), &args, b""));
+}
+
+#[test]
+fn prints_json_predictions() {
+    let dir = fixtures();
+    let output = Command::new(env!("CARGO_BIN_EXE_magika"))
+        .args(["--json", "main.rs", "low-confidence.bin"])
+        .current_dir(dir.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+
+    // Round scores down to two digits, which are the same on every platform.
+    let mut json: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    for entry in json.as_array_mut().unwrap() {
+        let score = &mut entry["prediction"]["score"];
+        *score = ((score.as_f64().unwrap() * 100.0).floor() / 100.0).into();
+    }
+    insta::assert_snapshot!(serde_json::to_string_pretty(&json).unwrap());
+}
+
+#[test]
+fn prints_an_empty_json_array_without_entries() {
+    let dir = fixtures();
+    let args = ["--json", "--recursive", "directory"];
+    insta::assert_snapshot!(magika(dir.path(), &args, b""));
+}
+
+#[test]
 fn rejects_invalid_usage() {
     let dir = fixtures();
     let mut output = String::new();
@@ -218,6 +258,7 @@ fn rejects_invalid_usage() {
         &["-", "-"][..],
         &["-l", "-i", "main.rs"],
         &["-m", "sure", "main.rs"],
+        &["--json", "-s", "main.rs"],
     ] {
         output += &magika(dir.path(), args, b"");
     }

@@ -3390,6 +3390,8 @@ dependencies = [
  "clap",
  "insta",
  "magika-burn",
+ "serde",
+ "serde_json",
  "tempfile",
  "walkdir",
 ]

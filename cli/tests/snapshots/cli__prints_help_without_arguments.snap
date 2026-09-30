@@ -19,5 +19,6 @@ Options:
   -l, --label                   Print the label (e.g. `rust`) instead of the description
   -i, --mime-type               Print the MIME type (e.g. `application/x-rust`) instead of the description
   -s, --output-score            Append the score of the prediction
+      --json                    Print a JSON array with the prediction and content type of each path
   -h, --help                    Print help (see more with '--help')
   -V, --version                 Print version

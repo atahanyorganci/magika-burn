@@ -17,7 +17,9 @@ path = "src/main.rs"
 [dependencies]
 anyhow = "1"
 clap = { version = "4.6", features = ["derive"] }
-magika-burn = { path = ".." }
+magika-burn = { path = "..", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 walkdir = "2.5"
 
 [dev-dependencies]

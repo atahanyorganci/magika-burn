@@ -1,6 +1,7 @@
 //! `magika`: detect the content type of files with Google's Magika model.
 
 use std::{
+    borrow::Cow,
     fs::{self, File},
     io::{self, Read, Write},
     path::{Path, PathBuf},
@@ -9,7 +10,10 @@ use std::{
 
 use anyhow::Result;
 use clap::{CommandFactory, Parser, ValueEnum, error::ErrorKind};
-use magika_burn::{ContentType, Magika, OverwriteReason, Prediction, PredictionMode};
+use magika_burn::{
+    ContentType, ContentTypeInfo, Magika, OverwriteReason, Prediction, PredictionMode,
+};
+use serde::Serialize;
 use walkdir::WalkDir;
 
 /// Detect the content type of files with Google's Magika model.
@@ -43,6 +47,10 @@ struct Args {
     /// Append the score of the prediction.
     #[arg(short = 's', long)]
     output_score: bool,
+
+    /// Print a JSON array with the prediction and content type of each path.
+    #[arg(long, conflicts_with_all = ["label", "mime_type", "output_score"])]
+    json: bool,
 }
 
 /// Command-line names of [`PredictionMode`].
@@ -118,13 +126,16 @@ fn run(args: &Args) -> Result<bool> {
             })?;
         }
     }
+    output.finish()?;
     Ok(output.all_identified)
 }
 
-/// Prints entries as they are identified.
+/// Prints entries as they are identified: as text lines, or as the elements of
+/// a JSON array.
 struct Output<'a> {
     args: &'a Args,
     stdout: io::StdoutLock<'static>,
+    printed: usize,
     all_identified: bool,
 }
 
@@ -133,13 +144,65 @@ impl<'a> Output<'a> {
         Self {
             args,
             stdout: io::stdout().lock(),
+            printed: 0,
             all_identified: true,
         }
     }
 
     fn print(&mut self, entry: Entry) -> io::Result<()> {
         self.all_identified &= entry.result.is_ok();
-        writeln!(self.stdout, "{}", text(&entry, self.args))
+        if self.args.json {
+            let json = serde_json::to_string_pretty(&JsonEntry::from(&entry))
+                .expect("entries serialize to JSON");
+            let separator = if self.printed == 0 { "[\n" } else { ",\n" };
+            // Indent the element; newlines inside JSON strings are escaped.
+            write!(self.stdout, "{separator}  {}", json.replace('\n', "\n  "))?;
+        } else {
+            writeln!(self.stdout, "{}", text(&entry, self.args))?;
+        }
+        self.printed += 1;
+        Ok(())
+    }
+
+    fn finish(&mut self) -> io::Result<()> {
+        match (self.args.json, self.printed) {
+            (false, _) => Ok(()),
+            (true, 0) => writeln!(self.stdout, "[]"),
+            (true, _) => writeln!(self.stdout, "\n]"),
+        }
+    }
+}
+
+/// An element of the `--json` output.
+#[derive(Serialize)]
+#[serde(untagged)]
+enum JsonEntry<'a> {
+    Identified {
+        path: Cow<'a, str>,
+        prediction: Prediction,
+        /// Information about `prediction.output`.
+        info: &'static ContentTypeInfo,
+    },
+    Failed {
+        path: Cow<'a, str>,
+        error: String,
+    },
+}
+
+impl<'a> From<&'a Entry> for JsonEntry<'a> {
+    fn from(entry: &'a Entry) -> Self {
+        let path = entry.path.to_string_lossy();
+        match &entry.result {
+            Ok(prediction) => Self::Identified {
+                path,
+                prediction: *prediction,
+                info: prediction.info(),
+            },
+            Err(error) => Self::Failed {
+                path,
+                error: error.to_string(),
+            },
+        }
     }
 }
 

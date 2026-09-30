@@ -1,0 +1,42 @@
+---
+source: cli/tests/cli.rs
+expression: "serde_json::to_string_pretty(&json).unwrap()"
+---
+[
+  {
+    "info": {
+      "description": "Rust source",
+      "extensions": [
+        "rs"
+      ],
+      "group": "code",
+      "is_text": true,
+      "label": "rust",
+      "mime_type": "application/x-rust"
+    },
+    "path": "main.rs",
+    "prediction": {
+      "dl": "rust",
+      "output": "rust",
+      "overwrite_reason": "none",
+      "score": 0.99
+    }
+  },
+  {
+    "info": {
+      "description": "Unknown binary data",
+      "extensions": [],
+      "group": "unknown",
+      "is_text": false,
+      "label": "unknown",
+      "mime_type": "application/octet-stream"
+    },
+    "path": "low-confidence.bin",
+    "prediction": {
+      "dl": "wasm",
+      "output": "unknown",
+      "overwrite_reason": "low_confidence",
+      "score": 0.31
+    }
+  }
+]
