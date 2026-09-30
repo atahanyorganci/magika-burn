@@ -1,0 +1,20 @@
+---
+source: cli/tests/cli.rs
+expression: output
+---
+exit code: 0
+--- stdout
+tree-link: Symbolic link (inode)
+tree/link.txt: Symbolic link (inode)
+tree/broken.txt: Symbolic link (inode)
+--- stderr
+exit code: 0
+--- stdout
+tree/broken.txt: Symbolic link (inode)
+tree/hello.txt: Generic text document (text)
+tree/link.txt: Symbolic link (inode)
+tree/main.rs: Rust source (code)
+tree/sub/binary.bin: Unknown binary data (unknown)
+tree/sub/cycle: Symbolic link (inode)
+tree/sub/empty.txt: Empty file (inode)
+--- stderr

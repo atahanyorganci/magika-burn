@@ -1,0 +1,12 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &args, b\"\")"
+---
+exit code: 0
+--- stdout
+tree/hello.txt: Generic text document (text)
+tree/main.rs: Rust source (code)
+tree/sub/binary.bin: Unknown binary data (unknown)
+tree/sub/empty.txt: Empty file (inode)
+hello.txt: Generic text document (text)
+--- stderr

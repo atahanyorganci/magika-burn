@@ -3391,6 +3391,7 @@ dependencies = [
  "insta",
  "magika-burn",
  "tempfile",
+ "walkdir",
 ]
 
 [[package]]

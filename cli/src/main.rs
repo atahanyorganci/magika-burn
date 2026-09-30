@@ -10,6 +10,7 @@ use std::{
 use anyhow::Result;
 use clap::{CommandFactory, Parser, ValueEnum, error::ErrorKind};
 use magika_burn::{ContentType, Magika, OverwriteReason, Prediction, PredictionMode};
+use walkdir::WalkDir;
 
 /// Detect the content type of files with Google's Magika model.
 #[derive(Parser)]
@@ -18,6 +19,14 @@ struct Args {
     /// Files or directories to identify. `-` reads standard input.
     #[arg(required = true, value_name = "PATH")]
     paths: Vec<PathBuf>,
+
+    /// Identify the files inside directories instead of the directories themselves.
+    #[arg(short, long)]
+    recursive: bool,
+
+    /// Identify symbolic links as such instead of following them.
+    #[arg(long)]
+    no_dereference: bool,
 
     /// How confident the model must be for its prediction to be used.
     #[arg(short = 'm', long, value_name = "MODE", value_enum, default_value_t = Mode::HighConfidence)]
@@ -89,14 +98,49 @@ fn main() -> ExitCode {
 /// Identifies and prints every path. Returns whether all of them were identified.
 fn run(args: &Args) -> Result<bool> {
     let magika = Magika::new().with_prediction_mode(args.prediction_mode.into());
-    let mut stdout = io::stdout().lock();
-    let mut all_identified = true;
+    let mut output = Output::new(args);
     for path in &args.paths {
-        let entry = identify(&magika, path);
-        all_identified &= entry.result.is_ok();
-        writeln!(stdout, "{}", text(&entry, args))?;
+        if is_stdin(path) {
+            let result = read_stdin().map(|content| magika.identify_bytes(&content));
+            output.print(Entry {
+                path: path.clone(),
+                result,
+            })?;
+        } else if args.recursive {
+            for entry in walk(&magika, path, args.no_dereference) {
+                output.print(entry)?;
+            }
+        } else {
+            let result = identify_path(&magika, path, args.no_dereference);
+            output.print(Entry {
+                path: path.clone(),
+                result,
+            })?;
+        }
     }
-    Ok(all_identified)
+    Ok(output.all_identified)
+}
+
+/// Prints entries as they are identified.
+struct Output<'a> {
+    args: &'a Args,
+    stdout: io::StdoutLock<'static>,
+    all_identified: bool,
+}
+
+impl<'a> Output<'a> {
+    fn new(args: &'a Args) -> Self {
+        Self {
+            args,
+            stdout: io::stdout().lock(),
+            all_identified: true,
+        }
+    }
+
+    fn print(&mut self, entry: Entry) -> io::Result<()> {
+        self.all_identified &= entry.result.is_ok();
+        writeln!(self.stdout, "{}", text(&entry, self.args))
+    }
 }
 
 fn is_stdin(path: &Path) -> bool {
@@ -109,25 +153,54 @@ fn is_broken_pipe(error: &anyhow::Error) -> bool {
         .is_some_and(|error| error.kind() == io::ErrorKind::BrokenPipe)
 }
 
-fn identify(magika: &Magika, path: &Path) -> Entry {
-    let result = if is_stdin(path) {
-        read_stdin().map(|content| magika.identify_bytes(&content))
-    } else {
-        identify_path(magika, path)
-    };
-    Entry {
-        path: path.to_owned(),
-        result,
-    }
-}
-
 fn read_stdin() -> io::Result<Vec<u8>> {
     let mut content = Vec::new();
     io::stdin().lock().read_to_end(&mut content)?;
     Ok(content)
 }
 
-fn identify_path(magika: &Magika, path: &Path) -> io::Result<Prediction> {
+/// Identifies the files under `path` (or `path` itself if it is not a directory),
+/// depth-first in name order.
+fn walk<'a>(
+    magika: &'a Magika,
+    path: &'a Path,
+    no_dereference: bool,
+) -> impl Iterator<Item = Entry> + 'a {
+    WalkDir::new(path)
+        .follow_links(!no_dereference)
+        .follow_root_links(!no_dereference)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_map(move |entry| match entry {
+            // Directories are walked, not identified.
+            Ok(entry) if entry.file_type().is_dir() => None,
+            Ok(entry) => Some(Entry {
+                result: identify_path(magika, entry.path(), no_dereference),
+                path: entry.into_path(),
+            }),
+            Err(error) => Some(walk_error(error, path)),
+        })
+}
+
+/// Converts a walk error, whose message would repeat the path, to an entry.
+fn walk_error(error: walkdir::Error, root: &Path) -> Entry {
+    let path = error.path().unwrap_or(root).to_owned();
+    let result = Err(match error.loop_ancestor() {
+        Some(ancestor) => io::Error::other(format!(
+            "directory cycle: links to its ancestor {}",
+            ancestor.display()
+        )),
+        None => error
+            .into_io_error()
+            .unwrap_or_else(|| io::Error::other("unknown error")),
+    });
+    Entry { path, result }
+}
+
+fn identify_path(magika: &Magika, path: &Path, no_dereference: bool) -> io::Result<Prediction> {
+    if no_dereference && fs::symlink_metadata(path)?.is_symlink() {
+        return Ok(Prediction::ruled(ContentType::Symlink));
+    }
     let metadata = fs::metadata(path)?;
     if metadata.is_dir() {
         return Ok(Prediction::ruled(ContentType::Directory));

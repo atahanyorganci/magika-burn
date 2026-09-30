@@ -61,6 +61,28 @@ fn fixtures() -> TempDir {
     dir
 }
 
+/// Adds `tree/`, with files at two levels, to the fixtures.
+fn tree(dir: &Path) {
+    fs::create_dir_all(dir.join("tree/sub")).unwrap();
+    fs::write(dir.join("tree/main.rs"), RUST).unwrap();
+    fs::write(dir.join("tree/hello.txt"), "hello\n").unwrap();
+    fs::write(dir.join("tree/sub/empty.txt"), "").unwrap();
+    fs::write(dir.join("tree/sub/binary.bin"), [0xff, 0xfe, 0xfd, 0xfc]).unwrap();
+}
+
+/// Adds symbolic links to a file, to a missing file, to an ancestor directory
+/// (a cycle) and to `tree/`.
+#[cfg(unix)]
+fn links(dir: &Path) {
+    use std::os::unix::fs::symlink;
+
+    tree(dir);
+    symlink("hello.txt", dir.join("tree/link.txt")).unwrap();
+    symlink("missing.txt", dir.join("tree/broken.txt")).unwrap();
+    symlink("..", dir.join("tree/sub/cycle")).unwrap();
+    symlink("tree", dir.join("tree-link")).unwrap();
+}
+
 /// Runs `magika` in `dir` and formats its exit code and output for a snapshot.
 fn magika(dir: &Path, args: &[&str], stdin: &[u8]) -> String {
     let mut child = Command::new(env!("CARGO_BIN_EXE_magika"))
@@ -148,6 +170,44 @@ fn reports_errors_and_continues() {
 fn rejects_special_files() {
     let dir = fixtures();
     insta::assert_snapshot!(magika(dir.path(), &["/dev/null"], b""));
+}
+
+#[test]
+fn recurses_into_directories() {
+    let dir = fixtures();
+    tree(dir.path());
+    let args = ["-r", "tree", "hello.txt"];
+    insta::assert_snapshot!(magika(dir.path(), &args, b""));
+}
+
+#[cfg(unix)]
+#[test]
+fn follows_symbolic_links() {
+    let dir = fixtures();
+    links(dir.path());
+    let mut output = magika(
+        dir.path(),
+        &["tree-link", "tree/link.txt", "tree/broken.txt"],
+        b"",
+    );
+    output += &magika(dir.path(), &["-r", "tree"], b"");
+    insta::assert_snapshot!(output);
+}
+
+#[cfg(unix)]
+#[test]
+fn identifies_symbolic_links_without_dereferencing() {
+    let dir = fixtures();
+    links(dir.path());
+    let args = [
+        "--no-dereference",
+        "tree-link",
+        "tree/link.txt",
+        "tree/broken.txt",
+    ];
+    let mut output = magika(dir.path(), &args, b"");
+    output += &magika(dir.path(), &["-r", "--no-dereference", "tree"], b"");
+    insta::assert_snapshot!(output);
 }
 
 #[test]

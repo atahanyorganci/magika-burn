@@ -1,0 +1,20 @@
+---
+source: cli/tests/cli.rs
+expression: output
+---
+exit code: 1
+--- stdout
+tree-link: A directory (inode)
+tree/link.txt: Generic text document (text)
+tree/broken.txt: error: No such file or directory (os error 2)
+--- stderr
+exit code: 1
+--- stdout
+tree/broken.txt: error: No such file or directory (os error 2)
+tree/hello.txt: Generic text document (text)
+tree/link.txt: Generic text document (text)
+tree/main.rs: Rust source (code)
+tree/sub/binary.bin: Unknown binary data (unknown)
+tree/sub/cycle: error: directory cycle: links to its ancestor tree
+tree/sub/empty.txt: Empty file (inode)
+--- stderr

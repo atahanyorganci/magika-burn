@@ -13,6 +13,8 @@ Arguments:
   <PATH>...  Files or directories to identify. `-` reads standard input
 
 Options:
+  -r, --recursive               Identify the files inside directories instead of the directories themselves
+      --no-dereference          Identify symbolic links as such instead of following them
   -m, --prediction-mode <MODE>  How confident the model must be for its prediction to be used [default: high-confidence] [possible values: high-confidence, medium-confidence, best-guess]
   -l, --label                   Print the label (e.g. `rust`) instead of the description
   -i, --mime-type               Print the MIME type (e.g. `application/x-rust`) instead of the description
