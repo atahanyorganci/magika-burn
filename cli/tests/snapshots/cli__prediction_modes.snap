@@ -1,0 +1,16 @@
+---
+source: cli/tests/cli.rs
+expression: output
+---
+exit code: 0
+--- stdout
+low-confidence.bin: unknown [low confidence: wasm, 31%]
+--- stderr
+exit code: 0
+--- stdout
+low-confidence.bin: unknown [low confidence: wasm, 31%]
+--- stderr
+exit code: 0
+--- stdout
+low-confidence.bin: wasm
+--- stderr

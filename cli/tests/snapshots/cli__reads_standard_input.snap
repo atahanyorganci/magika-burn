@@ -1,0 +1,10 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &args, MARKDOWN.as_bytes())"
+---
+exit code: 0
+--- stdout
+main.rs: Rust source (code)
+-: Markdown document (text)
+hello.txt: Generic text document (text)
+--- stderr

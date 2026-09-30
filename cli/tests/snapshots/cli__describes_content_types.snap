@@ -1,0 +1,14 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), ALL, b\"\")"
+---
+exit code: 0
+--- stdout
+main.rs: Rust source (code)
+notes.md: Markdown document (text)
+empty.txt: Empty file (inode)
+hello.txt: Generic text document (text)
+binary.bin: Unknown binary data (unknown)
+low-confidence.bin: Unknown binary data (unknown) [low confidence: Web Assembly (executable), 31%]
+directory: A directory (inode)
+--- stderr

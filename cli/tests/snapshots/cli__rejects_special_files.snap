@@ -1,0 +1,8 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &[\"/dev/null\"], b\"\")"
+---
+exit code: 1
+--- stdout
+/dev/null: error: not a regular file
+--- stderr

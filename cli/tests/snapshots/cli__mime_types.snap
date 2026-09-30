@@ -1,0 +1,14 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &args, b\"\")"
+---
+exit code: 0
+--- stdout
+main.rs: application/x-rust
+notes.md: text/markdown
+empty.txt: inode/x-empty
+hello.txt: text/plain
+binary.bin: application/octet-stream
+low-confidence.bin: application/octet-stream [low confidence: application/wasm, 31%]
+directory: inode/directory
+--- stderr

@@ -1,0 +1,10 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &args, b\"\")"
+---
+exit code: 0
+--- stdout
+main.rs: Rust source (code) 99%
+hello.txt: Generic text document (text) 100%
+low-confidence.bin: Unknown binary data (unknown) [low confidence: Web Assembly (executable), 31%]
+--- stderr

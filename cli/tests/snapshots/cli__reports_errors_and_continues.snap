@@ -1,0 +1,9 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &args, b\"\")"
+---
+exit code: 1
+--- stdout
+missing.txt: error: No such file or directory (os error 2)
+hello.txt: Generic text document (text)
+--- stderr

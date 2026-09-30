@@ -1,0 +1,21 @@
+---
+source: cli/tests/cli.rs
+expression: "magika(dir.path(), &[], b\"\")"
+---
+exit code: 2
+--- stdout
+--- stderr
+Detect the content type of files with Google's Magika model
+
+Usage: magika [OPTIONS] <PATH>...
+
+Arguments:
+  <PATH>...  Files or directories to identify. `-` reads standard input
+
+Options:
+  -m, --prediction-mode <MODE>  How confident the model must be for its prediction to be used [default: high-confidence] [possible values: high-confidence, medium-confidence, best-guess]
+  -l, --label                   Print the label (e.g. `rust`) instead of the description
+  -i, --mime-type               Print the MIME type (e.g. `application/x-rust`) instead of the description
+  -s, --output-score            Append the score of the prediction
+  -h, --help                    Print help (see more with '--help')
+  -V, --version                 Print version

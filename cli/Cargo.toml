@@ -1,0 +1,24 @@
+[package]
+name = "magika-burn-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Detect file content types from the command line with Google's Magika model, in pure Rust"
+repository.workspace = true
+license.workspace = true
+keywords = ["magika", "file-type", "mime-type", "content-type", "cli"]
+categories = ["command-line-utilities", "filesystem"]
+authors.workspace = true
+
+[[bin]]
+name = "magika"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.6", features = ["derive"] }
+magika-burn = { path = ".." }
+
+[dev-dependencies]
+insta = "1"
+tempfile = "3"

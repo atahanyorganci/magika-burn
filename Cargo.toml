@@ -1,4 +1,5 @@
 [workspace]
+members = ["cli"]
 
 # Shared by all crates. The release workflow reads the version from here.
 [workspace.package]
