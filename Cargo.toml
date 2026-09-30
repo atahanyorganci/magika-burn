@@ -1,6 +1,6 @@
 [package]
 name = "magika-burn"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2024"
 rust-version = "1.92"
 description = "Google's Magika file content type detection in pure Rust, powered by Burn. Runs natively and in WebAssembly."
