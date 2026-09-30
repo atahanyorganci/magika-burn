@@ -1,9 +1,10 @@
 # magika-burn
 
 [Magika](https://github.com/google/magika) is Google's deep-learning model for
-detecting file content types. **magika-burn** runs it in pure Rust with
-[Burn](https://burn.dev): no ONNX Runtime, no C++ and no Python. The same code
-runs natively and as WebAssembly in browsers and Node.js.
+detecting file content types. **magika-burn** runs it in pure Rust: the model's
+forward pass is written out in plain Rust, with its weights embedded, so there
+is no ONNX Runtime, no machine-learning framework, no C++ and no Python. The
+same code runs natively and as WebAssembly in browsers, Node.js and Bun.
 
 This is an unofficial port and is not affiliated with Google. For the official
 implementations, see [google/magika](https://github.com/google/magika).
@@ -105,9 +106,25 @@ If your bundler doesn't handle `new URL("…", import.meta.url)`, pass the URL o
 the bytes of `@yorganci/magika-burn/magika_bg.wasm` to
 `init({ module_or_path })` instead.
 
-Identifying a file takes tens of milliseconds, so run the model in a Web Worker
-if you identify many files. `MagikaModel` holds WebAssembly memory: call
-`magika.free()` when you are done with it, or declare it with `using`.
+Identifying a file takes about 20 ms, so run the model in a Web Worker if you
+identify many files. `MagikaModel` is a small object in WebAssembly memory,
+which `magika.free()` releases, as does declaring it with `using`.
+
+### Bun
+
+`bun run` uses the Node.js entry point, which reads `magika_bg.wasm` from the
+package. A [single-file executable](https://bun.sh/docs/bundler/executables) built
+with `bun build --compile` cannot, so embed the WebAssembly module and pass it
+to `initSync` from the browser build:
+
+```js
+import { readFileSync } from "node:fs";
+import wasm from "@yorganci/magika-burn/magika_bg.wasm" with { type: "file" };
+import { initSync, MagikaModel } from "@yorganci/magika-burn/web";
+
+initSync({ module: readFileSync(wasm) });
+const magika = new MagikaModel();
+```
 
 ### Command line
 
@@ -181,9 +198,13 @@ The Rust crate also exposes the individual steps: `Features::extract`,
 
 1. **Features:** Magika reads up to 4 KiB from each end of the content. It strips
    whitespace and keeps the first and last 1024 bytes, padding shorter content.
-2. **Model:** at build time, [`burn-onnx`](https://github.com/tracel-ai/burn-onnx)
-   converts Magika's `standard_v3_3` ONNX model to Rust code that runs on Burn's
-   Flex CPU backend. The weights are embedded in the binary.
+2. **Model:** Magika's `standard_v3_3` model is an embedding of the bytes, a
+   layer norm, a convolution, a second layer norm and a dense layer. Its forward
+   pass is written out for f32 in [`src/model.rs`](src/model.rs), with the
+   weights embedded in the binary. The convolution takes about 95% of the time.
+   [`scripts/prepare_model.py`](scripts/prepare_model.py) extracts the weights
+   from the ONNX model and checks a NumPy version of the forward pass against
+   ONNX Runtime; the tests check the Rust one.
 3. **Content types:** the scores are resolved with the thresholds and the
    overwrite map from the model's configuration. MIME types and other information
    come from upstream's content types knowledge base.
@@ -195,27 +216,31 @@ not paths, so there is no handling of directories or symbolic links.
 
 ## Performance
 
-Identifying one file at a time on an Apple Silicon Mac:
+Identifying one file at a time on an Apple M3 Max:
 
-| Implementation                      | Time per file |
-| ----------------------------------- | ------------- |
-| Upstream Magika (ONNX Runtime)      | ~2.5 ms       |
-| magika-burn, native                 | ~16 ms        |
-| magika-burn, WebAssembly in Node.js | ~32 ms        |
+| Implementation                           | Time per file | Memory  |
+| ---------------------------------------- | ------------- | ------- |
+| Upstream Magika (ONNX Runtime)           | ~2.5 ms       |         |
+| magika-burn, native (one thread)         | ~14 ms        |         |
+| magika-burn, WebAssembly in Node.js 24   | ~18 ms        | ~13 MiB |
+| magika-burn, WebAssembly in Bun 1.4      | ~18 ms        | ~26 MiB |
 
-Most of the time is spent in element-wise operations, so there is room for
-improvement. The WebAssembly module is about 5 MB (3.3 MB gzipped), mostly model
-weights.
+Memory is the resident memory the WebAssembly module adds, including compiling
+it, as measured by `scripts/measure-wasm.mjs`. Upstream uses all cores; this
+port uses one per file. The WebAssembly module is 3.2 MB (3.0 MB gzipped), almost
+all of it weights: its code is 36 KiB.
 
 ## Development
 
 `nix develop` provides the Rust toolchain with the WebAssembly target,
-`wasm-bindgen-cli`, Node.js and pnpm.
+`wasm-bindgen-cli`, Node.js, pnpm and Bun.
 
 ```sh
 cargo test --workspace --all-features  # Rust and CLI tests, including upstream reference data
 pnpm run build                         # build pkg/web
 pnpm test                              # test the WebAssembly build with Node.js
+tests/bun/compile.sh                   # test a compiled Bun executable
+bun scripts/measure-wasm.mjs           # measure memory and time (or node --expose-gc)
 uv run scripts/prepare_model.py        # re-vendor upstream assets and regenerate fixtures
 ```
 
@@ -225,5 +250,5 @@ Copyright 2026 Atahan Yorgancı. Licensed under the [Apache License 2.0](LICENSE
 
 The Magika model, its configuration, the content types knowledge base and the
 upstream test data are © Google LLC and also licensed under the Apache License
-2.0 ([`assets/LICENSE`](assets/LICENSE)). The model is modified as described in
-[`assets/README.md`](assets/README.md).
+2.0 ([`assets/LICENSE`](assets/LICENSE)). `weights.f32` is extracted from the
+model as described in [`assets/README.md`](assets/README.md).
