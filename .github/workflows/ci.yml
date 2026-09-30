@@ -38,15 +38,15 @@ jobs:
         run: nix flake check
 
       - name: Rust formatting
-        run: nix develop --command cargo fmt --check
+        run: nix develop --command cargo fmt --all --check
 
       - name: Clippy
         run: |
-          nix develop --command cargo clippy --all-targets --all-features -- -D warnings
+          nix develop --command cargo clippy --workspace --all-targets --all-features -- -D warnings
           nix develop --command cargo clippy --lib --target wasm32-unknown-unknown -- -D warnings
 
       - name: Rust tests
-        run: nix develop --command cargo test --all-features
+        run: nix develop --command cargo test --workspace --all-features
 
       - name: Licenses
         run: nix develop --command cargo deny check licenses

@@ -1,15 +1,26 @@
-[package]
-name = "magika-burn"
+[workspace]
+
+# Shared by all crates. The release workflow reads the version from here.
+[workspace.package]
 version = "0.0.1"
 edition = "2024"
 rust-version = "1.92"
-description = "Google's Magika file content type detection in pure Rust, powered by Burn. Runs natively and in WebAssembly."
 repository = "https://github.com/atahanyorganci/magika-burn"
-documentation = "https://docs.rs/magika-burn"
 license = "Apache-2.0"
+authors = ["Atahan Yorgancı <atahanyorganci@hotmail.com>"]
+
+[package]
+name = "magika-burn"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Google's Magika file content type detection in pure Rust, powered by Burn. Runs natively and in WebAssembly."
+repository.workspace = true
+documentation = "https://docs.rs/magika-burn"
+license.workspace = true
 keywords = ["magika", "file-type", "mime-type", "content-type", "wasm"]
 categories = ["filesystem", "wasm", "science"]
-authors = ["Atahan Yorgancı <atahanyorganci@hotmail.com>"]
+authors.workspace = true
 readme = "README.md"
 include = ["/src", "/build.rs", "/assets", "/README.md", "/LICENSE"]
 
