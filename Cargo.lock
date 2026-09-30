@@ -277,7 +277,7 @@ checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
 
 [[package]]
 name = "magika-burn"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "base64",
  "flate2",
@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "magika-burn-cli"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "anyhow",
  "clap",

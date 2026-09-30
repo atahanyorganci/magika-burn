@@ -1,9 +1,8 @@
 [workspace]
 members = ["cli"]
 
-# Shared by all crates. The release workflow reads the version from here.
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 rust-version = "1.92"
 repository = "https://github.com/atahanyorganci/magika-burn"
