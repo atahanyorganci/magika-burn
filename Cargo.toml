@@ -23,7 +23,18 @@ keywords = ["magika", "file-type", "mime-type", "content-type", "wasm"]
 categories = ["filesystem", "wasm", "science"]
 authors.workspace = true
 readme = "README.md"
-include = ["/src", "/build.rs", "/assets", "/README.md", "/LICENSE"]
+# model.onnx is only read by scripts/prepare_model.py.
+include = [
+    "/src",
+    "/build.rs",
+    "/assets/LICENSE",
+    "/assets/README.md",
+    "/assets/content_types_kb.min.json",
+    "/assets/models/standard_v3_3/config.min.json",
+    "/assets/models/standard_v3_3/weights.f32",
+    "/README.md",
+    "/LICENSE",
+]
 
 [package.metadata.docs.rs]
 all-features = true

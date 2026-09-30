@@ -9,12 +9,10 @@ Usage: uv run scripts/prepare_model.py
 1. Downloads the model, its config, the content types knowledge base, the license
    and upstream reference test data from google/magika at a pinned commit, and
    verifies their SHA-256 checksums.
-2. Replaces `GlobalMaxPool` (not supported by burn-onnx) with the equivalent
-   `ReduceMax(axes=[2], keepdims=1)` in the model.
-3. Runs the *original* model with ONNX Runtime on deterministic inputs and writes
-   the inputs/outputs to `tests/fixtures/`, so the Rust and WASM tests check the
-   Burn port (including the patch) against the upstream model.
-4. Writes the model's weights, little-endian f32 in the order `WEIGHTS` lists them,
+2. Runs the model with ONNX Runtime on deterministic inputs and writes the
+   inputs/outputs to `tests/fixtures/`, so the Rust and WASM tests check the
+   crate's forward pass against the upstream model.
+3. Writes the model's weights, little-endian f32 in the order `WEIGHTS` lists them,
    to `weights.f32`, after checking the forward pass they are meant for (`forward`,
    in NumPy) against the ONNX Runtime outputs.
 """
@@ -26,7 +24,7 @@ from pathlib import Path
 import numpy as np
 import onnx
 import onnxruntime as ort
-from onnx import helper, numpy_helper
+from onnx import numpy_helper
 
 COMMIT = "a95a7a4e8fc5f9061a7adfec1b8d5f2ebbe42fe6"
 BASE_URL = f"https://raw.githubusercontent.com/google/magika/{COMMIT}"
@@ -39,9 +37,9 @@ SHA256 = {
     "tests_data/reference/features_extraction_examples.json.gz": "f8c78b07f3070089799f97d530658744604970688a15e25479cf9c3afbe49e41",
 }
 MODEL = "assets/models/standard_v3_3/model.onnx"
-# Upstream path -> vendored path (relative to the repository root). The model is
-# written separately because it is patched.
+# Upstream path -> vendored path (relative to the repository root).
 VERBATIM = {
+    MODEL: MODEL,
     "assets/models/standard_v3_3/config.min.json": "assets/models/standard_v3_3/config.min.json",
     "assets/content_types_kb.min.json": "assets/content_types_kb.min.json",
     "LICENSE": "assets/LICENSE",
@@ -85,30 +83,6 @@ def write(path: str, data: bytes) -> None:
     target = ROOT / path
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
-
-
-def patch(model: onnx.ModelProto) -> onnx.ModelProto:
-    patched = onnx.ModelProto()
-    patched.CopyFrom(model)
-    nodes = patched.graph.node
-    for index, node in enumerate(nodes):
-        if node.op_type != "GlobalMaxPool":
-            continue
-        # Input is [N, C, L]; GlobalMaxPool -> [N, C, 1] == ReduceMax over axis 2.
-        # Opset 15 still takes `axes` as an attribute.
-        replacement = helper.make_node(
-            "ReduceMax",
-            inputs=list(node.input),
-            outputs=list(node.output),
-            name=node.name or f"global_max_pool_{index}",
-            axes=[2],
-            keepdims=1,
-        )
-        nodes.remove(node)
-        nodes.insert(index, replacement)
-    assert not any(n.op_type == "GlobalMaxPool" for n in patched.graph.node)
-    onnx.checker.check_model(patched)
-    return patched
 
 
 def fixtures(model_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
@@ -156,13 +130,10 @@ def forward(w: dict[str, np.ndarray], tokens: np.ndarray) -> np.ndarray:
 
 
 def main() -> None:
-    original = download(MODEL)
-    (ROOT / MODEL).parent.mkdir(parents=True, exist_ok=True)
-    onnx.save(patch(onnx.load_from_string(original)), ROOT / MODEL)
-
     for upstream, vendored in VERBATIM.items():
         write(vendored, download(upstream))
 
+    original = (ROOT / MODEL).read_bytes()
     features, scores = fixtures(original)
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
     features.astype("<i4").tofile(FIXTURES_DIR / "features.i32.bin")
@@ -176,7 +147,7 @@ def main() -> None:
     blob = b"".join(np.ascontiguousarray(w[name]).tobytes() for name, _, _ in WEIGHTS)
     write(WEIGHTS_FILE, blob)
     print(f"wrote {WEIGHTS_FILE}: {len(blob)} bytes, SHA-256 {hashlib.sha256(blob).hexdigest()}")
-    print(f"vendored {len(VERBATIM) + 1} files from google/magika@{COMMIT[:7]}")
+    print(f"vendored {len(VERBATIM)} files from google/magika@{COMMIT[:7]}")
 
 
 if __name__ == "__main__":
