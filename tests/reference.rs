@@ -5,7 +5,7 @@ use std::io::Cursor;
 
 use base64::prelude::*;
 use flate2::read::GzDecoder;
-use magika::{Magika, PredictionMode};
+use magika_burn::{Magika, PredictionMode};
 
 const EXAMPLES: &[u8] =
     include_bytes!("fixtures/upstream/standard_v3_3-inference_examples_by_content.json.gz");

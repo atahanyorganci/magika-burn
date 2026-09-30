@@ -11,4 +11,5 @@ cargo build --release --lib --target wasm32-unknown-unknown
 wasm-bindgen \
   --target "$target" \
   --out-dir "pkg/$target" \
-  target/wasm32-unknown-unknown/release/magika.wasm
+  --out-name magika \
+  target/wasm32-unknown-unknown/release/magika_burn.wasm

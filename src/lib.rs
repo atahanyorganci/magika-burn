@@ -4,7 +4,7 @@
 //! module provides JavaScript bindings.
 //!
 //! ```
-//! use magika::{ContentType, Magika};
+//! use magika_burn::{ContentType, Magika};
 //!
 //! let magika = Magika::new();
 //! let prediction = magika.identify_bytes(b"fn main() {\n    println!(\"Hello, world!\");\n}\n");
