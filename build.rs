@@ -1,9 +1,7 @@
 use std::{collections::BTreeMap, env, fmt::Write as _, fs, path::PathBuf};
 
-use burn_onnx::{LoadStrategy, ModelGen};
 use serde::Deserialize;
 
-const MODEL: &str = "assets/models/standard_v3_3/model.onnx";
 const CONFIG: &str = "assets/models/standard_v3_3/config.min.json";
 const KNOWLEDGE_BASE: &str = "assets/content_types_kb.min.json";
 
@@ -42,7 +40,7 @@ struct ModelConfig {
 }
 
 fn main() {
-    for path in [MODEL, CONFIG, KNOWLEDGE_BASE] {
+    for path in [CONFIG, KNOWLEDGE_BASE] {
         println!("cargo:rerun-if-changed={path}");
     }
 
@@ -57,13 +55,6 @@ fn main() {
     )
     .unwrap();
     fs::write(out_dir.join("config.rs"), model_config(&config)).unwrap();
-
-    ModelGen::new()
-        .input(MODEL)
-        .out_dir("model/")
-        // Browsers have no filesystem, so the weights (~3 MB) are baked into the binary.
-        .load_strategy(LoadStrategy::Embedded)
-        .run_from_script();
 }
 
 fn read_json<T: serde::de::DeserializeOwned>(path: &str) -> T {

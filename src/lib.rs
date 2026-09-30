@@ -1,7 +1,7 @@
 //! Google's [Magika](https://github.com/google/magika) content-type detection
-//! model, compiled to native Rust with `burn-onnx` and run on Burn's Flex CPU
-//! backend. Works natively and on `wasm32-unknown-unknown`, where the `wasm`
-//! module provides JavaScript bindings.
+//! model in pure Rust: its forward pass is written out for f32, with the weights
+//! embedded in the binary. Works natively and on `wasm32-unknown-unknown`, where
+//! the `wasm` module provides JavaScript bindings.
 //!
 //! ```
 //! use magika_burn::{ContentType, Magika};
@@ -17,7 +17,6 @@
 mod config;
 mod content_type;
 mod features;
-#[allow(clippy::all, clippy::pedantic, dead_code, unused)]
 mod model;
 mod prediction;
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -28,19 +27,12 @@ use std::{
     io::{self, Read, Seek},
 };
 
-use burn::{
-    backend::Flex,
-    tensor::{Device, Int, Tensor, TensorData},
-};
-
 pub use crate::{
     config::{INPUT_SIZE, NUM_LABELS, PADDING_TOKEN},
     content_type::{ContentType, ContentTypeInfo},
     features::Features,
     prediction::{OverwriteReason, Prediction, PredictionMode},
 };
-
-type Backend = Flex;
 
 /// Runs the Rust examples in the README as doc tests.
 #[cfg(doctest)]
@@ -73,20 +65,16 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-/// The Magika model with its weights loaded.
+/// The Magika model. Its weights are embedded in the binary, so creating one is
+/// free.
 pub struct Magika {
-    model: model::Model<Backend>,
-    device: Device<Backend>,
     prediction_mode: PredictionMode,
 }
 
 impl Magika {
-    /// Loads the embedded model weights, using [`PredictionMode::HighConfidence`].
+    /// Creates the model, using [`PredictionMode::HighConfidence`].
     pub fn new() -> Self {
-        let device = Device::<Backend>::default();
         Self {
-            model: model::Model::from_embedded(&device),
-            device,
             prediction_mode: PredictionMode::default(),
         }
     }
@@ -119,14 +107,13 @@ impl Magika {
         match features {
             Features::Ruled(output) => Prediction::ruled(output),
             Features::Tokens(tokens) => {
-                let scores = self
-                    .scores(&tokens)
-                    .expect("extracted features are valid model input");
-                let scores = scores
+                let tokens = tokens
                     .as_slice()
                     .try_into()
-                    .expect("one sample has NUM_LABELS scores");
-                Prediction::from_scores(scores, self.prediction_mode)
+                    .expect("extracted features have INPUT_SIZE tokens");
+                let mut scores = [0.0; NUM_LABELS];
+                model::forward(tokens, &mut scores);
+                Prediction::from_scores(&scores, self.prediction_mode)
             }
         }
     }
@@ -148,17 +135,12 @@ impl Magika {
             return Err(Error::InvalidToken { index, token });
         }
 
-        let batch = features.len() / INPUT_SIZE;
-        let input = Tensor::<Backend, 2, Int>::from_data(
-            TensorData::new(features.to_vec(), [batch, INPUT_SIZE]),
-            &self.device,
-        );
-        let scores = self
-            .model
-            .forward(input)
-            .into_data()
-            .into_vec::<f32>()
-            .expect("model output is f32");
+        let mut scores = vec![0.0; features.len() / INPUT_SIZE * NUM_LABELS];
+        let (samples, _) = features.as_chunks::<INPUT_SIZE>();
+        let (rows, _) = scores.as_chunks_mut::<NUM_LABELS>();
+        for (tokens, row) in samples.iter().zip(rows) {
+            model::forward(tokens, row);
+        }
         Ok(scores)
     }
 }

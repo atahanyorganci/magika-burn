@@ -15,7 +15,7 @@ name = "magika-burn"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Google's Magika file content type detection in pure Rust, powered by Burn. Runs natively and in WebAssembly."
+description = "Google's Magika file content type detection in pure Rust. Runs natively and in WebAssembly."
 repository.workspace = true
 documentation = "https://docs.rs/magika-burn"
 license.workspace = true
@@ -37,19 +37,9 @@ serde = ["dep:serde"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-# `default-features = false` keeps training/autodiff out of the build. It also
-# disables Flex's default features, so they are selected on `burn-flex` below.
-burn = { version = "0.21", default-features = false, features = ["std", "flex"] }
-burn-flex = { version = "0.21", default-features = false, features = ["std", "simd"] }
-burn-store = { version = "0.21", default-features = false, features = ["burnpack"] }
 serde = { version = "1", features = ["derive"], optional = true }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-burn-flex = { version = "0.21", default-features = false, features = ["std", "simd", "rayon"] }
-
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
-# burn -> rand -> getrandom needs a browser entropy source on wasm32-unknown-unknown.
-getrandom = { version = "0.4", features = ["wasm_js"] }
 # Must exactly match `wasm-bindgen-cli` from the Nix shell.
 wasm-bindgen = "=0.2.127"
 # Plain JavaScript objects for predictions and content type information.
@@ -57,7 +47,6 @@ serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 
 [build-dependencies]
-burn-onnx = "0.21"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
@@ -65,6 +54,11 @@ serde_json = "1"
 base64 = "0.22"
 flate2 = "1"
 serde_json = "1"
+
+# The forward pass takes seconds per sample without optimizations, so optimize
+# it, and the dependencies the tests use, in debug builds too.
+[profile.dev.package.magika-burn]
+opt-level = 3
 
 [profile.dev.package."*"]
 opt-level = 3
