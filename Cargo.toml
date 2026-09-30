@@ -10,6 +10,10 @@ categories = ["rust"]
 authors = ["atahanyorganci <atahanyorganci@hotmail.com>"]
 readme = "README.md"
 
+[lib]
+# cdylib for wasm-bindgen, rlib for Rust users and tests.
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 # `default-features = false` keeps training/autodiff out of the build. It also
 # disables Flex's default features, so they are selected on `burn-flex` below.
@@ -19,6 +23,12 @@ burn-store = { version = "0.21", default-features = false, features = ["burnpack
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 burn-flex = { version = "0.21", default-features = false, features = ["std", "simd", "rayon"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+# burn -> rand -> getrandom needs a browser entropy source on wasm32-unknown-unknown.
+getrandom = { version = "0.4", features = ["wasm_js"] }
+# Must exactly match `wasm-bindgen-cli` from the Nix shell.
+wasm-bindgen = "=0.2.127"
 
 [build-dependencies]
 burn-onnx = "0.21"

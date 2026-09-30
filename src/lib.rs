@@ -1,9 +1,12 @@
 //! Google's [Magika](https://github.com/google/magika) content-type detection
 //! model, compiled to native Rust with `burn-onnx` and run on Burn's Flex CPU
-//! backend.
+//! backend. Works natively and on `wasm32-unknown-unknown`, where the `wasm`
+//! module provides JavaScript bindings.
 
 #[allow(clippy::all, clippy::pedantic, dead_code, unused)]
 mod model;
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub mod wasm;
 
 use std::fmt;
 

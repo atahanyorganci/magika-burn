@@ -3344,6 +3344,8 @@ dependencies = [
  "burn-flex",
  "burn-onnx",
  "burn-store",
+ "getrandom 0.4.3",
+ "wasm-bindgen",
 ]
 
 [[package]]
