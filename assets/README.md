@@ -7,12 +7,22 @@ and are licensed under the Apache License 2.0; see [`LICENSE`](./LICENSE).
 | File | Upstream path |
 | --- | --- |
 | `models/standard_v3_3/model.onnx` | `assets/models/standard_v3_3/model.onnx` (modified, see below) |
+| `models/standard_v3_3/weights.f32` | derived from `model.onnx`, see below |
 | `models/standard_v3_3/config.min.json` | `assets/models/standard_v3_3/config.min.json` |
 | `content_types_kb.min.json` | `assets/content_types_kb.min.json` |
 | `../tests/fixtures/upstream/*.json.gz` | `tests_data/reference/*.json.gz` |
 
 `build.rs` generates the Burn model from `model.onnx`, and the content types,
 label list, thresholds and overwrite map from the two JSON files.
+
+## Weights
+
+`models/standard_v3_3/weights.f32` holds the model's ten weight tensors,
+little-endian f32, in the order `scripts/prepare_model.py` lists them
+(`WEIGHTS`): 3,136,856 bytes, SHA-256
+`195256fffa2760df8024df8acabd047948a59b3a4618afd23b87dd26c870ea47`. The script
+checks a NumPy forward pass over these weights against ONNX Runtime on the
+upstream model before writing them.
 
 ## Modifications
 

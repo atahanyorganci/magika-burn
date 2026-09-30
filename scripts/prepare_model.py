@@ -14,6 +14,9 @@ Usage: uv run scripts/prepare_model.py
 3. Runs the *original* model with ONNX Runtime on deterministic inputs and writes
    the inputs/outputs to `tests/fixtures/`, so the Rust and WASM tests check the
    Burn port (including the patch) against the upstream model.
+4. Writes the model's weights, little-endian f32 in the order `WEIGHTS` lists them,
+   to `weights.f32`, after checking the forward pass they are meant for (`forward`,
+   in NumPy) against the ONNX Runtime outputs.
 """
 
 import hashlib
@@ -23,7 +26,7 @@ from pathlib import Path
 import numpy as np
 import onnx
 import onnxruntime as ort
-from onnx import helper
+from onnx import helper, numpy_helper
 
 COMMIT = "a95a7a4e8fc5f9061a7adfec1b8d5f2ebbe42fe6"
 BASE_URL = f"https://raw.githubusercontent.com/google/magika/{COMMIT}"
@@ -48,9 +51,25 @@ VERBATIM = {
 
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
+WEIGHTS_FILE = "assets/models/standard_v3_3/weights.f32"
 
 INPUT_SIZE = 2048  # beg_size (1024) + mid_size (0) + end_size (1024)
 PADDING_TOKEN = 256
+
+P = "jax2tf_get_logits_/pjit_get_logits_/MagikaV2/"
+# Name, ONNX initializer and the shape the forward pass reads it in, in file order.
+WEIGHTS = [
+    ("emb", "jax2tf_get_logits_/Const:0", (257, 64)),  # the one-hot matmul's matrix
+    ("b0", P + "Dense_0/Reshape:0", (64,)),
+    ("ln0_s", P + "LayerNorm_0/Reshape_2:0", (512,)),  # scale, per position
+    ("ln0_b", P + "LayerNorm_0/Reshape_3:0", (512,)),  # bias, per position
+    ("conv_w", P + "Conv_0/transpose_3:0", (512, 256, 5)),  # [out][in][width]
+    ("conv_b", "const_fold_opt__209", (512,)),
+    ("ln1_s", P + "LayerNorm_1/Reshape_2:0", (512,)),
+    ("ln1_b", P + "LayerNorm_1/Reshape_3:0", (512,)),
+    ("w1", "jax2tf_get_logits_/Const_24:0", (512, 214)),
+    ("b1", P + "Dense_1/Reshape:0", (214,)),
+]
 
 
 def download(path: str) -> bytes:
@@ -103,6 +122,39 @@ def fixtures(model_bytes: bytes) -> tuple[np.ndarray, np.ndarray]:
     return features, scores.astype(np.float32)
 
 
+def weights(model: onnx.ModelProto) -> dict[str, np.ndarray]:
+    initializers = {t.name: numpy_helper.to_array(t) for t in model.graph.initializer}
+    return {
+        name: initializers[onnx_name].reshape(shape).astype("<f4")
+        for name, onnx_name, shape in WEIGHTS
+    }
+
+
+def gelu(x: np.ndarray) -> np.ndarray:
+    """GELU, tanh approximation, in the ONNX graph's order of operations."""
+    return x * (0.5 * (1 + np.tanh(0.7978846 * (x + 0.044715 * x * x * x))))
+
+
+def forward(w: dict[str, np.ndarray], tokens: np.ndarray) -> np.ndarray:
+    """One sample: 2048 tokens (0-255, 256 for padding) to 214 softmax scores."""
+    x = gelu(w["emb"][tokens] + w["b0"])  # embedding: [2048, 64]
+    x = x.reshape(512, 256)  # [positions, channels]
+    mean = x.mean(0)
+    var = np.maximum(0, (x * x).mean(0) - mean * mean)
+    x = (x - mean) * (1 / np.sqrt(var + 1e-6))[None, :] * w["ln0_s"][:, None] + w["ln0_b"][:, None]
+    xc = x.T  # [channels, positions]
+    y = np.zeros((512, 508), np.float32)
+    for k in range(5):  # convolution, width 5, no padding
+        y += w["conv_w"][:, :, k] @ xc[:, k : k + 508]
+    y = gelu(y + w["conv_b"][:, None]).max(1)  # [512]
+    mean = y.mean()
+    var = max(0, (y * y).mean() - mean * mean)
+    y = (y - mean) * (1 / np.sqrt(var + 1e-6)) * w["ln1_s"] + w["ln1_b"]
+    z = y @ w["w1"] + w["b1"]
+    z = np.exp(z - z.max())
+    return z / z.sum()
+
+
 def main() -> None:
     original = download(MODEL)
     (ROOT / MODEL).parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +167,15 @@ def main() -> None:
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
     features.astype("<i4").tofile(FIXTURES_DIR / "features.i32.bin")
     scores.astype("<f4").tofile(FIXTURES_DIR / "scores.f32.bin")
+
+    w = weights(onnx.load_from_string(original))
+    error = np.abs(np.stack([forward(w, f) for f in features]) - scores).max()
+    print(f"NumPy forward pass vs ONNX Runtime: max abs error {error:.1e}")
+    if not error < 1e-5:
+        raise SystemExit("the NumPy forward pass does not match ONNX Runtime")
+    blob = b"".join(np.ascontiguousarray(w[name]).tobytes() for name, _, _ in WEIGHTS)
+    write(WEIGHTS_FILE, blob)
+    print(f"wrote {WEIGHTS_FILE}: {len(blob)} bytes, SHA-256 {hashlib.sha256(blob).hexdigest()}")
     print(f"vendored {len(VERBATIM) + 1} files from google/magika@{COMMIT[:7]}")
 
 
