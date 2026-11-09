@@ -10,7 +10,8 @@
 //!
 //! The convolution is almost all of the time. On x86-64 the whole pass runs through a function compiled for AVX2
 //! and FMA when the processor has them, chosen once at run time, which is about two and a half times faster than
-//! the baseline instruction set the crate is otherwise compiled for.
+//! the baseline instruction set the crate is otherwise compiled for. On AArch64, fused multiply-add is part of the
+//! baseline.
 //!
 //! `scripts/prepare_model.py` writes the weights and checks a NumPy version of this forward pass against ONNX
 //! Runtime.
@@ -113,8 +114,12 @@ pub(crate) fn forward(tokens: &[i32; INPUT_SIZE], scores: &mut [f32; NUM_LABELS]
         // SAFETY: guarded by the runtime detection above.
         return unsafe { forward_avx2(tokens, scores) };
     }
-    forward_impl::<false>(tokens, scores)
+    forward_impl::<BASELINE_FMW>(tokens, scores)
 }
+
+/// Whether the baseline instruction set has fused multiply-add: always on AArch64, and on x86-64 when built for a
+/// processor that has it, such as with `-C target-cpu=native`.
+const BASELINE_FMA: bool = cfg!(any(target_arch = "aarch64", target_feature = "fma"));
 
 /// The forward pass with AVX2 and FMA. Everything it calls must inline into it:
 /// `#[target_feature]` does not reach a function that stays out of line, which
@@ -218,6 +223,7 @@ fn norm0(w: &Weights, h: &[f32; POSITIONS * CHANNELS], x: &mut [f32; CHANNELS * 
 /// leaves an inner loop of `min` and `max` that vectorizes, moves the `VALID` test out of it, and calls GELU
 /// twice per filter instead of once per position. Taking only the maximum would be wrong: GELU is not monotonic,
 /// and a filter whose outputs are all negative would pick the wrong end.
+#[inline(always)]
 fn conv<const FUSED: bool>(w: &Weights, x: &[f32; CHANNELS * ROW], pooled: &mut [f32; FILTERS]) {
     let (pooled, _) = pooled.as_chunks_mut::<BLOCK_FILTERS>();
     for (o, best) in (0..FILTERS).step_by(BLOCK_FILTERS).zip(pooled) {
