@@ -84,6 +84,9 @@ fn links(dir: &Path) {
 }
 
 /// Runs `magika` in `dir` and formats its exit code and output for a snapshot.
+///
+/// The snapshots are written on Unix: on Windows, path separators and the
+/// message for a missing file are changed to match them.
 fn magika(dir: &Path, args: &[&str], stdin: &[u8]) -> String {
     let mut child = Command::new(env!("CARGO_BIN_EXE_magika"))
         .args(args)
@@ -95,12 +98,20 @@ fn magika(dir: &Path, args: &[&str], stdin: &[u8]) -> String {
         .unwrap();
     child.stdin.take().unwrap().write_all(stdin).unwrap();
     let output = child.wait_with_output().unwrap();
-    format!(
+    let output = format!(
         "exit code: {}\n--- stdout\n{}--- stderr\n{}",
         output.status.code().unwrap(),
         String::from_utf8(output.stdout).unwrap(),
         String::from_utf8(output.stderr).unwrap(),
-    )
+    );
+    if cfg!(windows) {
+        output.replace('\\', "/").replace(
+            "The system cannot find the file specified.",
+            "No such file or directory",
+        )
+    } else {
+        output
+    }
 }
 
 const ALL: &[&str] = &[
@@ -178,6 +189,21 @@ fn recurses_into_directories() {
     tree(dir.path());
     let args = ["-r", "tree", "hello.txt"];
     insta::assert_snapshot!(magika(dir.path(), &args, b""));
+}
+
+/// Files are identified in parallel but printed in the order they were given, so
+/// that a run is reproducible however many of them there are.
+#[test]
+fn prints_in_the_order_of_the_paths() {
+    let dir = fixtures();
+    tree(dir.path());
+    let mut args = vec!["-r", "tree"];
+    args.extend_from_slice(ALL);
+    let serial = magika(dir.path(), &[&["-j", "1"], args.as_slice()].concat(), b"");
+    for jobs in ["2", "3", "8", "64"] {
+        let parallel = magika(dir.path(), &[&["-j", jobs], args.as_slice()].concat(), b"");
+        assert_eq!(parallel, serial, "-j {jobs} reordered the output");
+    }
 }
 
 #[cfg(unix)]
@@ -328,8 +354,10 @@ fn prints_help_without_arguments() {
 #[test]
 fn stops_quietly_when_stdout_is_closed() {
     let dir = fixtures();
-    // Enough output to fill the pipe, so that writing fails once it is closed.
-    let args = vec!["hello.txt"; 20_000];
+    // Enough output to fill the pipe, so that writing fails once it is closed,
+    // from a command line under Windows' limit of 32767 characters.
+    fs::write(dir.path().join("a"), "hello\n").unwrap();
+    let args = vec!["a"; 10_000];
     let mut child = Command::new(env!("CARGO_BIN_EXE_magika"))
         .args(&args)
         .current_dir(dir.path())
@@ -343,7 +371,7 @@ fn stops_quietly_when_stdout_is_closed() {
     drop(stdout);
 
     let output = child.wait_with_output().unwrap();
-    assert_eq!(first_line, "hello.txt: Generic text document (text)\n");
+    assert_eq!(first_line, "a: Generic text document (text)\n");
     assert!(output.status.success(), "{output:?}");
     assert!(output.stderr.is_empty(), "{output:?}");
 }
