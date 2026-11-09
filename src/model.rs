@@ -114,7 +114,7 @@ pub(crate) fn forward(tokens: &[i32; INPUT_SIZE], scores: &mut [f32; NUM_LABELS]
         // SAFETY: guarded by the runtime detection above.
         return unsafe { forward_avx2(tokens, scores) };
     }
-    forward_impl::<BASELINE_FMW>(tokens, scores)
+    forward_impl::<BASELINE_FMA>(tokens, scores)
 }
 
 /// Whether the baseline instruction set has fused multiply-add: always on AArch64, and on x86-64 when built for a
